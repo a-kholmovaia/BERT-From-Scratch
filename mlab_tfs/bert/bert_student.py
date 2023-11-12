@@ -39,17 +39,25 @@ class LayerNorm(nn.Module):
     def __init__(self, normalized_shape: typing.Union[int, tuple]):
         super().__init__()
         self.normalized_shape = normalized_shape
-        self.weight = None
-        self.bias = None
-        raise NotImplementedError
+        self.weight = nn.Parameter(t.ones(normalized_shape))
+        self.bias = nn.Parameter(t.zeros(normalized_shape))
 
     def forward(self, input: TensorType[...]):
         """Apply Layer Normalization over a mini-batch of inputs."""
+        dim_for_norm = range(-len(self.normalized_shape), 0)
+        args = dict(input=input, dim=dim_for_norm, keepdim=True)
         eps = 1e-05
-        raise NotImplementedError
+        mu = t.mean(input=input, **args)
+        sigma = t.var(unbiased=False, **args)
+        return t.div(
+            (input - mu), 
+            t.sqrt((sigma + eps))
+        ) * self.weight + self.bias
 
 
-class Embedding(nn.Module):
+
+# ----------- DONE
+class Embedding(nn.Module): 
     """
     A simple lookup table storing embeddings of a fixed dictionary and size.
     See https://pytorch.org/docs/stable/generated/torch.nn.Embedding.html
@@ -71,12 +79,11 @@ class Embedding(nn.Module):
 
     def __init__(self, vocab_size, embed_size):
         super().__init__()
-        self.weight = None
-        raise NotImplementedError
+        self.weight = nn.Parameter(t.randn(vocab_size, embed_size))
 
     def forward(self, input):
         """Look up the input list of indices in the embedding matrix."""
-        raise NotImplementedError
+        return self.weight[input]
 
 
 class BertEmbedding(nn.Module):
