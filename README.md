@@ -1,6 +1,6 @@
 # MLAB Transformers From Scratch (in progress)
 
-A documented and unit-tested repo to help you build transformer neural network models from scratch.
+A documented and unit-tested repo to help students to build transformer neural network models from scratch.
 The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from scratch](https://github.com/mukobi/MLAB-Transformers-From-Scratch)
 
 <p align="center">
