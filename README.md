@@ -17,3 +17,7 @@ The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from sc
 - [ ] BertBlock
 - [ ] Bert
 - [ ] BertWithClassify
+
+Take use of einops & einsums:
+[einsum](https://rockt.github.io/2018/04/30/einsum)
+[einops](http://einops.rocks/)
