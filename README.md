@@ -1,6 +1,6 @@
 # MLAB Transformers From Scratch (in progress)
 
-A documented and unit-tested repo to help you build transformer neural network models from scratch.
+With the help of MLAB Transformers repo, I'm reimplementing BERT from scratch. The MLAB Transformers repo is documented and unit-tested repo to help students to build transformer neural network models from scratch.
 The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from scratch](https://github.com/mukobi/MLAB-Transformers-From-Scratch)
 
 <p align="center">
@@ -17,3 +17,7 @@ The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from sc
 - [ ] BertBlock
 - [ ] Bert
 - [ ] BertWithClassify
+
+Make use of einops & einsums:
+[einsum](https://rockt.github.io/2018/04/30/einsum)
+[einops](http://einops.rocks/)
