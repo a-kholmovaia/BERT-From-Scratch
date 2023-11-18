@@ -56,7 +56,6 @@ class LayerNorm(nn.Module):
 
 
 
-# ----------- DONE
 class Embedding(nn.Module): 
     """
     A simple lookup table storing embeddings of a fixed dictionary and size.
@@ -124,16 +123,19 @@ class BertEmbedding(nn.Module):
     def __init__(self, vocab_size: int, hidden_size: int, max_position_embeddings: int,
                  type_vocab_size: int, dropout: float):
         super().__init__()
-        self.token_embedding = None
-        self.position_embedding = None
-        self.token_type_embedding = None
-        self.layer_norm = None
-        self.dropout = None
-        raise NotImplementedError
+        self.token_embedding = Embedding(vocab_size, hidden_size)
+        self.position_embedding = Embedding(max_position_embeddings, hidden_size)
+        self.token_type_embedding = Embedding(type_vocab_size, hidden_size)
+        self.layer_norm = LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, token_type_ids):
         """Add embeddings and apply layer norm and dropout."""
+        tokens = self.token_embedding(input_ids)
+        segments = self.token_type_embedding(token_type_ids)
+        positions = self.position_embedding()
         raise NotImplementedError
+        
 
 
 class MultiHeadedSelfAttention(nn.Module):
