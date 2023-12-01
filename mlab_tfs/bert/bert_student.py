@@ -44,10 +44,14 @@ class LayerNorm(nn.Module):
 
     def forward(self, input: TensorType[...]):
         """Apply Layer Normalization over a mini-batch of inputs."""
-        dim_for_norm = range(-len(self.normalized_shape), 0)
+        if isinstance(self.normalized_shape, int):
+            last_dim = -1
+        else: 
+            last_dim = -len(self.normalized_shape)
+        dim_for_norm = list(range(last_dim, 0))
         args = dict(input=input, dim=dim_for_norm, keepdim=True)
         eps = 1e-05
-        mu = t.mean(input=input, **args)
+        mu = t.mean(**args)
         sigma = t.var(unbiased=False, **args)
         return t.div(
             (input - mu), 
@@ -126,15 +130,17 @@ class BertEmbedding(nn.Module):
         self.token_embedding = Embedding(vocab_size, hidden_size)
         self.position_embedding = Embedding(max_position_embeddings, hidden_size)
         self.token_type_embedding = Embedding(type_vocab_size, hidden_size)
-        self.layer_norm = LayerNorm(hidden_size)
+        self.layer_norm = LayerNorm((hidden_size, ))
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, token_type_ids):
         """Add embeddings and apply layer norm and dropout."""
         tokens = self.token_embedding(input_ids)
         segments = self.token_type_embedding(token_type_ids)
-        positions = self.position_embedding()
-        raise NotImplementedError
+        positions = self.position_embedding(t.arange(input_ids.shape[1]))
+        x = tokens + segments + positions
+        x = self.layer_norm(x)
+        return self.dropout(x)
         
 
 

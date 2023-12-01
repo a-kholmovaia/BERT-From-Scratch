@@ -1,5 +1,7 @@
 # MLAB Transformers From Scratch (in progress)
 
+Test passed 8/23.
+
 With the help of MLAB Transformers repo, I'm reimplementing BERT from scratch. The MLAB Transformers repo is documented and unit-tested repo to help students to build transformer neural network models from scratch.
 The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from scratch](https://github.com/mukobi/MLAB-Transformers-From-Scratch)
 
@@ -10,7 +12,7 @@ The initial repo: [Machine Learning for Alignment Bootcamp: Transformers from sc
 ### To-Do List - Bert
 - [x] Embedding
 - [x] LayerNorm
-- [ ] BertEmbedding
+- [x] BertEmbedding
 - [ ] MultiHeadedSelfAttention
 - [ ] GELU
 - [ ] BertMLP
