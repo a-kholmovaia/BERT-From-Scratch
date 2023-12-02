@@ -188,21 +188,53 @@ class MultiHeadedSelfAttention(nn.Module):
                 attn_mask: typing.Optional[TensorType['batch', 'seq_length']] = None
                 ) -> TensorType['batch', 'seq_length', 'hidden_size']:
         """Apply multi-headed scaled dot product self attention with an optional attention mask."""
+        # project the input into Q, K, and V
         key = self.project_key(input)
         value = self.project_value(input)
         query = self.project_query(input)
+        # splitting projections into smaller vectors for n_heads 
+        keys_mh = rearrange(
+            key, 'batch seq_len (n_heads hid_size) -> batch n_heads seq_len hid_size', 
+            n_heads=self.num_heads
+            )
+        queries_mh = rearrange(
+            query, 'batch seq_len (n_heads hid_size) -> batch n_heads seq_len hid_size', 
+            n_heads=self.num_heads
+            )
+        values_mh = rearrange(
+            value, 'batch seq_len (n_heads hid_size) -> batch n_heads seq_len hid_size', 
+            n_heads=self.num_heads
+            )
+        # attention with multiple heads
+        attn_filters = self.self_attention(
+            key=keys_mh, query=queries_mh, value=values_mh,
+            attn_mask=attn_mask
+        )
+        # concatenate the filters from multiple heads
+        concat_filters = rearrange(
+            attn_filters, 'batch n_heads seq_len hid_size -> batch seq_len (n_heads hid_size)'
+            )
+        # last linear
+        output = self.project_output(concat_filters)
+        return output
 
+
+    def self_attention(self, key, query, value, attn_mask=None): 
         # Single-Head Attention
-        qk = query.matmul(key.T) # multiply
-        scale_qk = qk / t.sqrt(key.shape[-1]) # scale
-        att_filter_qk = t.softmax(scale_qk) # softmax
+        key_t = rearrange(key, # transpose last 2 dim of key
+            'batch n_heads seq_len hid_size -> batch n_heads hid_size seq_len'
+            )
+        qk = query.matmul(key_t) # multiply QK^T
+        scaled_qk = qk / t.sqrt(t.tensor(key.shape[-1])) # scale by sqrt(d_k)
+        att_filter_qk = t.softmax(scaled_qk, dim=-1) # softmax
 
-        att_filter = att_filter_qk.matmul(value)
-        
 
+        if attn_mask != None:
+            att_filter_qk *= attn_mask
 
+        att_filter = att_filter_qk.matmul(value) # multiply with V
 
-        raise NotImplementedError
+        return att_filter
 
 
 class GELU(nn.Module):
@@ -222,7 +254,8 @@ class GELU(nn.Module):
 
     def forward(self, input):
         """Apply the GELU function."""
-        raise NotImplementedError
+        gauss_cdf =  0.5 * (1.0 + t.erf(input / t.sqrt(t.tensor(2))))
+        return input * gauss_cdf
 
 
 class BertMLP(nn.Module):
@@ -247,15 +280,16 @@ class BertMLP(nn.Module):
 
     def __init__(self, hidden_size: int, intermediate_size: int):
         super().__init__()
-        self.lin1 = None
-        self.gelu = None
-        self.lin2 = None
-        raise NotImplementedError
+        self.lin1 = nn.Linear(hidden_size, intermediate_size)
+        self.gelu = GELU()
+        self.lin2 = nn.Linear(intermediate_size, hidden_size)
 
     def forward(self, input: TensorType['batch_size', 'seq_length', 'hidden_size']
                 ) -> TensorType['batch_size', 'seq_length', 'hidden_size']:
         """Apply linear projection, GELU, and another linear projection."""
-        raise NotImplementedError
+        x = self.lin1(input)
+        x = self.gelu(x)
+        return self.lin2(x)
 
 
 class BertBlock(nn.Module):
@@ -294,16 +328,29 @@ class BertBlock(nn.Module):
 
     def __init__(self, hidden_size: int, intermediate_size: int, num_heads: int, dropout: float):
         super().__init__()
-        self.attention = None
-        self.layernorm1 = None
-        self.mlp = None
-        self.layernorm2 = None
-        self.dropout = None
-        raise NotImplementedError
+        self.attention = MultiHeadedSelfAttention(num_heads=num_heads, hidden_size=hidden_size)
+        self.layernorm1 = LayerNorm((hidden_size,))
+        self.mlp = BertMLP(hidden_size, intermediate_size)
+        self.layernorm2 = LayerNorm((hidden_size,))
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, attn_mask=None):
         """Apply each of the layers in the block."""
-        raise NotImplementedError
+        attention_filter = self.attention(input, attn_mask)
+        attention_residual = attention_filter + input
+        attention_residual = self.dropout(attention_residual)
+        attention_norm = self.layernorm1(attention_residual)
+
+        ff_out = self.mlp(attention_norm)
+        ff_out += attention_norm
+        ff_out = self.dropout(ff_out)
+        out = self.layernorm2(ff_out)
+
+        return out
+
+
+
+
 
 
 class Bert(nn.Module):
@@ -347,7 +394,7 @@ class Bert(nn.Module):
                  type_vocab_size: int, dropout: float, intermediate_size: int,
                  num_heads: int, num_layers: int):
         super().__init__()
-        self.embed = None
+        self.embed = Embedding(vocab_size, hidden_size)
         self.blocks = None
         self.lin = None
         self.gelu = None
