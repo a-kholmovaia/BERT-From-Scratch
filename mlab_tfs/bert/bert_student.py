@@ -178,16 +178,30 @@ class MultiHeadedSelfAttention(nn.Module):
     def __init__(self, num_heads: int, hidden_size: int):
         super().__init__()
         self.num_heads = num_heads
-        self.project_query = None
-        self.project_key = None
-        self.project_value = None
-        self.project_output = None
-        raise NotImplementedError
+        self.output_per_head = int(hidden_size/num_heads)
+        self.project_query = nn.Linear(hidden_size, hidden_size)
+        self.project_key = nn.Linear(hidden_size, hidden_size)
+        self.project_value = nn.Linear(hidden_size, hidden_size)
+        self.project_output = nn.Linear(hidden_size, hidden_size)
 
     def forward(self, input: TensorType['batch', 'seq_length', 'hidden_size'],
                 attn_mask: typing.Optional[TensorType['batch', 'seq_length']] = None
                 ) -> TensorType['batch', 'seq_length', 'hidden_size']:
         """Apply multi-headed scaled dot product self attention with an optional attention mask."""
+        key = self.project_key(input)
+        value = self.project_value(input)
+        query = self.project_query(input)
+
+        # Single-Head Attention
+        qk = query.matmul(key.T) # multiply
+        scale_qk = qk / t.sqrt(key.shape[-1]) # scale
+        att_filter_qk = t.softmax(scale_qk) # softmax
+
+        att_filter = att_filter_qk.matmul(value)
+        
+
+
+
         raise NotImplementedError
 
 
