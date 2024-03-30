@@ -394,21 +394,34 @@ class Bert(nn.Module):
                  type_vocab_size: int, dropout: float, intermediate_size: int,
                  num_heads: int, num_layers: int):
         super().__init__()
-        self.embed = Embedding(vocab_size, hidden_size)
-        self.blocks = None
-        self.lin = None
-        self.gelu = None
-        self.layer_norm = None
-        self.unembed = None
-        raise NotImplementedError
+        self.embed = BertEmbedding(vocab_size, hidden_size, max_position_embeddings, type_vocab_size, dropout)
+        list_blocks = self.__init_blocks(hidden_size, dropout, intermediate_size, num_heads, num_layers)
+        self.blocks = nn.Sequential(*list_blocks)
+        self.lin = nn.Linear(hidden_size, hidden_size)
+        self.gelu = GELU()
+        self.layer_norm = LayerNorm((hidden_size,))
+        self.unembed = nn.Linear(hidden_size, vocab_size)
+
+    def __init_blocks(self, hidden_size, dropout, intermediate_size, num_heads, num_layers):
+        list_blocks = []
+        for i in range(num_layers):
+            block = BertBlock(hidden_size, intermediate_size, num_heads, dropout)
+            list_blocks.append(block)
+        return list_blocks
 
     def forward(self, input_ids):
         """Apply embedding, blocks, and token output head."""
         token_type_ids = t.zeros_like(input_ids, dtype=t.int64)
-        raise NotImplementedError
+        x = self.embed(input_ids, token_type_ids)
+        x = self.blocks(x)
+        x = self.lin(x)
+        x = self.gelu(x)
+        x = self.layer_norm(x)
+        x = self.unembed(x)
+        return x
 
 
-class BertWithClassify(nn.Module):
+class BertWithClassify(Bert):
     """
     The full BERT transformer encoder model which goes from token IDs to logits.
 
@@ -441,18 +454,21 @@ class BertWithClassify(nn.Module):
 
     def __init__(self, vocab_size, hidden_size, max_position_embeddings, type_vocab_size,
                  dropout, intermediate_size, num_heads, num_layers, num_classes):
-        super().__init__()
-        self.embed = None
-        self.blocks = None
-        self.lin = None
-        self.gelu = None
-        self.layer_norm = None
-        self.unembed = None
-        self.classification_dropout = None
-        self.classification_head = None
-        raise NotImplementedError
+        super().__init__(vocab_size, hidden_size, max_position_embeddings, type_vocab_size,
+                 dropout, intermediate_size, num_heads, num_layers,)
+        self.classification_head = nn.Linear(hidden_size, num_classes)
+        self.classification_dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids):
         """Returns a tuple of logits, classifications."""
         token_type_ids = t.zeros_like(input_ids, dtype=t.int64)
-        raise NotImplementedError
+        x = self.embed(input_ids, token_type_ids)
+        x = self.blocks(x)
+        logits = self.lin(x)
+        logits = self.gelu(logits)
+        logits = self.layer_norm(logits)
+        logits = self.unembed(logits)
+        cls = x[:, 0] # CLS token encoding
+        cls = self.classification_dropout(cls)
+        cls = self.classification_head(cls)
+        return logits, cls
